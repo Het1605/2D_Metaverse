@@ -1,0 +1,8 @@
+{
+  "com.badlogic.gdx.scenes.scene2d.ui.Skin": {
+    "touchpad": {
+      "background": "touchpad-bg",
+      "knob": "touchpad-knob"
+    }
+  }
+}
