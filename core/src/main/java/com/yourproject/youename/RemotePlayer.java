@@ -1,9 +1,8 @@
 package com.yourproject.youename;
 
-
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
 public class RemotePlayer {
@@ -11,31 +10,44 @@ public class RemotePlayer {
     public String nickname;
     public int currentDirection = 0;
     public boolean isMoving = false;
-    private BitmapFont font;
     private float stateTime = 0f;
+    private GlyphLayout layout = new GlyphLayout();
 
     public RemotePlayer(float x, float y, String nickname) {
         this.x = x;
         this.y = y;
-        this.nickname = nickname;
-        this.font = new BitmapFont();
-        font.getData().setScale(0.7f);
+        this.nickname = nickname != null ? nickname : "Player";
     }
 
     public void render(Batch batch) {
+        if (Assets.remoteWalkAnimations == null) return;
+
+
+
         if (isMoving) {
             stateTime += Gdx.graphics.getDeltaTime();
-        } else {
-            stateTime = 0;
         }
 
-        TextureRegion frame = Assets.remoteAvatar; // Default static
 
-        if (Assets.remoteWalkAnimations != null) {
-            frame = Assets.remoteWalkAnimations[currentDirection].getKeyFrame(stateTime, true);
-        }
 
-        batch.draw(frame, x, y, 32, 32);
-        font.draw(batch, nickname, x, y + 40);
+        TextureRegion frame = Assets.remoteWalkAnimations[currentDirection].getKeyFrame(stateTime, true);
+
+        float width = frame.getRegionWidth() * Assets.PLAYER_SCALE;
+        float height = frame.getRegionHeight() * Assets.PLAYER_SCALE;
+
+        batch.draw(frame, x, y, width, height);
+
+        layout.setText(Assets.nameFont, nickname);
+        float textWidth = layout.width;
+        float textHeight = layout.height;
+
+        float textX = x + width / 2 - textWidth / 2;
+        float textY = y + height + 10 + textHeight;
+
+        float padding = 6;
+        Assets.nameBackground.draw(batch, textX - padding, textY - textHeight - padding,
+            textWidth + 2 * padding, textHeight + 2 * padding);
+
+        Assets.nameFont.draw(batch, layout, textX, textY);
     }
 }

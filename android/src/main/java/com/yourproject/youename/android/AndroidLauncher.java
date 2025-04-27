@@ -45,14 +45,26 @@ public class AndroidLauncher extends AndroidApplication {
             try {
                 JSONArray players = (JSONArray) args[0];
                 for (int i = 0; i < players.length(); i++) {
+
                     JSONObject p = players.getJSONObject(i);
                     String id = p.getString("playerId");
                     String name = p.getString("playerName");
-                    float x = (float) p.getDouble("x");
-                    float y = (float) p.getDouble("y");
+                    float x,y;
+
+                    if(name == nickname){
+                         x = 300f;
+                         y = -80f;
+                    } else{
+                         x = (float) p.getDouble("x");
+                         y = (float) p.getDouble("y");
+                    }
+
+
+                    RemotePlayer rp = new RemotePlayer(x, y, name);
+                    rp.isMoving = false; // ❌ Not moving initially
 
                     Log.d("SOCKET", "currentPlayer: " + name);
-                    MyGame.remotePlayers.put(id, new RemotePlayer(x, y, name));
+                    MyGame.remotePlayers.put(id, rp);
                 }
             } catch (Exception e) {
                 Log.d("SOCKET", "Error in onCurrentPlayers", e);
@@ -64,8 +76,8 @@ public class AndroidLauncher extends AndroidApplication {
                 JSONObject data = (JSONObject) args[0];
                 String id = data.getString("playerId");
                 String name = data.getString("playerName");
-                float x = (float) data.getDouble("x");
-                float y = (float) data.getDouble("y");
+                float x = 300f;
+                float y = -80f;
 
                 Log.d("SOCKET", "playerJoined: " + name);
                 MyGame.remotePlayers.put(id, new RemotePlayer(x, y, name));
@@ -166,6 +178,7 @@ public class AndroidLauncher extends AndroidApplication {
                 case android.view.MotionEvent.ACTION_UP:
                 case android.view.MotionEvent.ACTION_CANCEL:
                     DirectionController.stop();
+                    SocketManager.getInstance().sendPlayerStopped(); // 🚀 Emit stopping event!
                     break;
             }
             return true;

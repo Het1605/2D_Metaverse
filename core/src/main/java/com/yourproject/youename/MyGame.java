@@ -9,6 +9,7 @@ import java.util.HashMap;
 public class MyGame extends Game {
     public String mapCode;
     private String nickname;
+    public static Player player;
 
     public static SocketBridge socketBridge;
 

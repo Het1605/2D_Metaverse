@@ -66,7 +66,7 @@ public class GameScreen implements Screen {
         batch = new SpriteBatch();
 
         // Create player
-        player = new Player(100, 100, camera, map,nickname);
+        player = new Player(300, -80, camera, map,nickname);
     }
 
     @Override
@@ -91,6 +91,7 @@ public class GameScreen implements Screen {
 
         // Render player
         batch.setProjectionMatrix(camera.combined);
+
         batch.begin();
         player.render(batch);
 

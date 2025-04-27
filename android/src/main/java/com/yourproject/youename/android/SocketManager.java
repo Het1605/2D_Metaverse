@@ -98,4 +98,8 @@ public class SocketManager {
     public void onPlayerLeft(Emitter.Listener listener) {
         socket.on("playerLeft", listener);
     }
+
+    public void sendPlayerStopped() {
+        socket.emit("playerStopped");
+    }
 }

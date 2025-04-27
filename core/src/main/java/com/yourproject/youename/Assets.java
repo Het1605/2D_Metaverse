@@ -1,40 +1,36 @@
 package com.yourproject.youename;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.NinePatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 
 public class Assets {
 
-    public static TextureRegion remoteAvatar; // simple static if needed
+    public static Animation<TextureRegion>[] remoteWalkAnimations;
     private static Texture remoteAvatarTexture;
-
-    public static Animation<TextureRegion>[] remoteWalkAnimations; // ✅ Animation array for remote players
+    public static BitmapFont nameFont;
+    public static NinePatch nameBackground;
+    public static final float PLAYER_SCALE = 0.3f;
 
     private static final int FRAME_COLS = 4;
     private static final int FRAME_ROWS = 4;
-    private static final float FRAME_DURATION = 0.1f; // Adjust speed of walking animation
+    private static final float FRAME_DURATION = 0.1f;
 
     public static void load() {
-        // Load the full sprite sheet
+        // Load spritesheet
         remoteAvatarTexture = new Texture(Gdx.files.internal("girls1/c.png"));
 
-        // Create a default avatar (just first frame)
-        remoteAvatar = new TextureRegion(remoteAvatarTexture, 0, 0,
-            remoteAvatarTexture.getWidth() / FRAME_COLS,
-            remoteAvatarTexture.getHeight() / FRAME_ROWS
-        );
-
-        // Split into frames
         TextureRegion[][] tempFrames = TextureRegion.split(
             remoteAvatarTexture,
             remoteAvatarTexture.getWidth() / FRAME_COLS,
             remoteAvatarTexture.getHeight() / FRAME_ROWS
         );
 
-        // Create animations
         remoteWalkAnimations = new Animation[FRAME_ROWS];
         for (int i = 0; i < FRAME_ROWS; i++) {
             Array<TextureRegion> frames = new Array<>();
@@ -43,59 +39,22 @@ public class Assets {
             }
             remoteWalkAnimations[i] = new Animation<>(FRAME_DURATION, frames, Animation.PlayMode.LOOP);
         }
+
+        // Load font
+        nameFont = new BitmapFont();
+        nameFont.getData().setScale(0.9f);
+
+        // Load background
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.setColor(0, 0, 0, 0.6f);
+        pixmap.fill();
+        Texture bgTexture = new Texture(pixmap);
+        nameBackground = new NinePatch(bgTexture, 0, 0, 0, 0);
     }
 
     public static void dispose() {
-        if (remoteAvatarTexture != null) {
-            remoteAvatarTexture.dispose();
-        }
+        if (remoteAvatarTexture != null) remoteAvatarTexture.dispose();
+        if (nameFont != null) nameFont.dispose();
+        if (nameBackground != null) nameBackground.getTexture().dispose();
     }
 }
-
-
-//
-//
-//import com.badlogic.gdx.Gdx;
-//import com.badlogic.gdx.graphics.Texture;
-//import com.badlogic.gdx.graphics.g2d.Animation;
-//import com.badlogic.gdx.graphics.g2d.TextureRegion;
-//import com.badlogic.gdx.utils.Array;
-//
-//public class Assets {
-//
-//    private static Texture spriteSheet; // Full sprite sheet
-//    public static Animation<TextureRegion>[] remoteWalkAnimations; // Animations array (same as Player)
-//
-//    private static final int FRAME_COLS = 4; // Columns in sprite sheet
-//    private static final int FRAME_ROWS = 4; // Rows (directions)
-//    private static final float FRAME_DURATION = 0.1f; // Speed of animation
-//
-//    public static void load() {
-//        // Load the full sprite sheet once
-//        spriteSheet = new Texture(Gdx.files.internal("girls1/c.png"));
-//
-//        // Split sprite into frames
-//        TextureRegion[][] splitFrames = TextureRegion.split(
-//            spriteSheet,
-//            spriteSheet.getWidth() / FRAME_COLS,
-//            spriteSheet.getHeight() / FRAME_ROWS
-//        );
-//
-//        // Initialize animations
-//        remoteWalkAnimations = new Animation[FRAME_ROWS];
-//
-//        for (int i = 0; i < FRAME_ROWS; i++) {
-//            Array<TextureRegion> frames = new Array<>();
-//            for (int j = 0; j < FRAME_COLS; j++) {
-//                frames.add(splitFrames[i][j]);
-//            }
-//            remoteWalkAnimations[i] = new Animation<>(FRAME_DURATION, frames, Animation.PlayMode.LOOP);
-//        }
-//    }
-//
-//    public static void dispose() {
-//        if (spriteSheet != null) {
-//            spriteSheet.dispose();
-//        }
-//    }
-//}
