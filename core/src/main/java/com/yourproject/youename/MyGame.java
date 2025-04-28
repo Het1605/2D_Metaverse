@@ -10,6 +10,9 @@ public class MyGame extends Game {
     public String mapCode;
     private String nickname;
     public static Player player;
+    public static String pendingVoiceChatCode = null; // 🆕 Add this line
+
+
 
     public static SocketBridge socketBridge;
 

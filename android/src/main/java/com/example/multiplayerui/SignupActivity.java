@@ -57,7 +57,7 @@ public class SignupActivity extends AppCompatActivity {
             response -> {
                 Toast.makeText(SignupActivity.this, "Signup Success!", Toast.LENGTH_SHORT).show();
 
-                Intent intent = new Intent(SignupActivity.this,MainActivity.class);
+                Intent intent = new Intent(SignupActivity.this,Login.class);
                 startActivity(intent);
                 // Navigate to login or home screen here
             },

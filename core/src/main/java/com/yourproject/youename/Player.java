@@ -46,11 +46,20 @@ public class Player {
 
     private GlyphLayout layout;
     private NinePatch nameTagBg;
+    private static String voiceChatCode = null; // ✅ NEW: to store current voice channel code
+
+    private GlyphLayout voiceLayout; // ✅ NEW: separate layout for voice chat
+    private NinePatch voiceTagBg;    // ✅ NEW: background for voice chat
+
+
+
     public Player(float x, float y, OrthographicCamera camera, TiledMap map,String nickname) {
         position = new Vector2(x, y);
         this.nickname = nickname;
         this.font=new BitmapFont();
         this.layout = new GlyphLayout();
+        this.voiceLayout = new GlyphLayout(); // ✅ initialize
+
 
         // Optional styling
         font.getData().setScale(0.9f); // smaller font
@@ -61,6 +70,8 @@ public class Player {
         pixmap.fill();
         Texture bgTexture = new Texture(pixmap);
         nameTagBg = new NinePatch(bgTexture, 0, 0, 0, 0); // No stretch margins
+
+        voiceTagBg = new NinePatch(bgTexture, 0, 0, 0, 0);
 
         this.camera = camera;
         this.collisionHandler = new CollisionHandler(map);
@@ -145,6 +156,11 @@ public class Player {
 
     }
 
+    // ✅ ADD THIS method to update voice chat code dynamically
+    public static void setVoiceChatActive(String code) {
+        voiceChatCode = code;
+    }
+
     public void render(Batch batch) {
         TextureRegion currentFrame = walkAnimations[currentDirection].getKeyFrame(stateTime, true);
         float scale = 0.3f;
@@ -154,7 +170,7 @@ public class Player {
 
         batch.draw(currentFrame, position.x, position.y, width, height);
 
-        // Measure text width
+        // === Nickname Drawing ===
         layout.setText(font, nickname);
         float textWidth = layout.width;
         float textHeight = layout.height;
@@ -162,14 +178,27 @@ public class Player {
         float textX = position.x + width / 2 - textWidth / 2;
         float textY = position.y + height + 10 + textHeight;
 
-        // Draw background rectangle with padding
         float padding = 6;
         nameTagBg.draw(batch, textX - padding, textY - textHeight - padding, textWidth + 2 * padding, textHeight + 2 * padding);
 
-        // Draw nickname
         font.draw(batch, layout, textX, textY);
-    }
 
+        // === Voice Chat Drawing (✅ NEW) ===
+        if (voiceChatCode != null && !voiceChatCode.isEmpty()) {
+            String voiceLabel = "Voice: " + voiceChatCode;
+            voiceLayout.setText(font, voiceLabel);
+
+            float voiceTextWidth = voiceLayout.width;
+            float voiceTextHeight = voiceLayout.height;
+
+            float voiceTextX = position.x + width / 2 - voiceTextWidth / 2;
+            float voiceTextY = position.y - 10; // 📌 BELOW player
+
+            voiceTagBg.draw(batch, voiceTextX - padding, voiceTextY - voiceTextHeight - padding, voiceTextWidth + 2 * padding, voiceTextHeight + 2 * padding);
+
+            font.draw(batch, voiceLayout, voiceTextX, voiceTextY);
+        }
+    }
     public int getCurrentDirection() {
         return currentDirection;
     }

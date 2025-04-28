@@ -1,11 +1,17 @@
 package com.yourproject.youename.android;
 
+import static com.yourproject.youename.MyGame.player;
+
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.badlogic.gdx.backends.android.AndroidApplication;
@@ -13,6 +19,8 @@ import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
 import com.example.multiplayerui.MainActivity;
 import com.yourproject.youename.DirectionController;
 import com.yourproject.youename.MyGame;
+import com.yourproject.youename.Player;
+import com.yourproject.youename.R;
 import com.yourproject.youename.RemotePlayer;
 import com.yourproject.youename.SocketBridge;
 
@@ -203,22 +211,113 @@ public class AndroidLauncher extends AndroidApplication {
         backButton.setOnClickListener(v -> finish());
 
         // Chat Button (placeholder)
-        Button chatButton = new Button(this);
-        chatButton.setText("Chat");
-        FrameLayout.LayoutParams chatParams = new FrameLayout.LayoutParams(
+        // Inflate the voice button from XML
+        View voiceButtonView = getLayoutInflater().inflate(R.layout.voice_button, null);
+        FrameLayout.LayoutParams voiceParams = new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT
         );
-        chatParams.gravity = Gravity.BOTTOM | Gravity.END;
-        chatParams.setMargins(0, 0, 20, 30);
-        buttonContainer.addView(chatButton, chatParams);
+        voiceParams.gravity = Gravity.BOTTOM | Gravity.END;
+        voiceParams.setMargins(0, 0, 30, 60);
+        rootLayout.addView(voiceButtonView, voiceParams);
 
-        chatButton.setOnClickListener(v -> {
-            Toast.makeText(this, "Chat feature coming soon!", Toast.LENGTH_SHORT).show();
+        View joinButtonView = getLayoutInflater().inflate(R.layout.join_button, null);
+        FrameLayout.LayoutParams joinParams = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT
+        );
+        joinParams.gravity = Gravity.BOTTOM | Gravity.END;
+        joinParams.setMargins(0, 0, 230, 60);
+        rootLayout.addView(joinButtonView, joinParams);
+
+// Set click listener
+        ImageButton voiceButton = voiceButtonView.findViewById(R.id.buttonVoiceChat);
+        voiceButton.setOnClickListener(v -> {
+            String voiceChannelCode = generateVoiceChannelCode();  // Generate the voice channel code
+            SocketManager.getInstance().connectVoiceChannel(voiceChannelCode,nickname); // Connect to voice channel
+
+
+
+
+
+            MyGame.pendingVoiceChatCode = voiceChannelCode;
+            Toast.makeText(this, "Connected to voice channel: " + voiceChannelCode, Toast.LENGTH_SHORT).show();
+            Player.setVoiceChatActive(voiceChannelCode);
+            openVoiceChatPopup();  // Open voice chat popup
+
+
         });
+
+
 
         rootLayout.addView(buttonContainer);
         setContentView(rootLayout);
+    }
+
+
+
+    private void openVoiceChatPopup() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
+        View popupView = getLayoutInflater().inflate(R.layout.dialog_voice_chat, null);
+        builder.setView(popupView);
+
+        final android.app.AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(false); // ❌ Don't close by clicking outside
+        dialog.setCancelable(false); // ❌ Don't close by back button
+
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
+
+        // Get references to buttons
+        ImageButton endCallButton = popupView.findViewById(R.id.end_call_button);
+        LinearLayout usersContainer = popupView.findViewById(R.id.users_container);
+
+        // Dynamically add user divs with circles (active speakers will have a green border)
+        addUserDiv(usersContainer, "User 1", true);  // Example user who's talking
+        addUserDiv(usersContainer, "User 2", false); // Example user who's not talking
+
+        // End call button logic
+        endCallButton.setOnClickListener(v -> {
+            SocketManager.getInstance().disconnectVoiceChannel(); // Disconnect from voice channel
+            Player.setVoiceChatActive(null);
+            dialog.dismiss(); // End call and close the popup
+        });
+    }
+
+    // Method to add a user circle dynamically
+    private void addUserDiv(LinearLayout container, String userName, boolean isSpeaking) {
+        // Create a new LinearLayout for each user
+        LinearLayout userLayout = new LinearLayout(this);
+        userLayout.setOrientation(LinearLayout.HORIZONTAL);
+        userLayout.setGravity(Gravity.CENTER_VERTICAL);
+
+        // Create a circle for the user (ImageView)
+        ImageView userCircle = new ImageView(this);
+        userCircle.setLayoutParams(new LinearLayout.LayoutParams(100, 100));
+        userCircle.setPadding(0,0,0,20);
+        userCircle.setImageResource(R.drawable.call); // Replace with actual user image
+
+
+        // Add the circle and user name
+        TextView userNameText = new TextView(this);
+        userNameText.setText(userName);
+        userNameText.setPadding(16, 0, 0, 0);
+
+        userLayout.addView(userCircle);
+        userLayout.addView(userNameText);
+
+        // Add the user layout to the container
+        container.addView(userLayout);
+    }
+
+    private String generateVoiceChannelCode() {
+        final String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder code = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            int randomIndex = (int) (Math.random() * characters.length());
+            code.append(characters.charAt(randomIndex));
+        }
+        return code.toString();
     }
 
     @Override

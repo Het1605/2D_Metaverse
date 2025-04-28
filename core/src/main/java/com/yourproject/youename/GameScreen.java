@@ -67,6 +67,9 @@ public class GameScreen implements Screen {
 
         // Create player
         player = new Player(300, -80, camera, map,nickname);
+
+
+
     }
 
     @Override

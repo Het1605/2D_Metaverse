@@ -102,4 +102,23 @@ public class SocketManager {
     public void sendPlayerStopped() {
         socket.emit("playerStopped");
     }
+    public void connectVoiceChannel(String channelCode,String nickname) {
+        try {
+            JSONObject data = new JSONObject();
+            data.put("voiceChannelCode", channelCode);
+            data.put("playerName",nickname);
+            socket.emit("joinVoiceChannel", data);
+            Log.d("SocketManager", "Voice channel " + channelCode + " connected.");
+        } catch (JSONException e) {
+            Log.e("SocketManager", "Error connecting to voice channel", e);
+        }
+    }
+
+    public void disconnectVoiceChannel() {
+        try {
+            socket.emit("leaveVoiceChannel");
+        } catch (Exception e) {
+            Log.e("SocketManager", "Error disconnecting from voice channel", e);
+        }
+    }
 }
