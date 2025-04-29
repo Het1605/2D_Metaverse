@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -42,8 +43,10 @@ public class AndroidLauncher extends AndroidApplication {
         // Only call one of these based on "creating"
         if (MainActivity.hashMap.containsKey("creating") &&
             MainActivity.hashMap.get("creating").equals("true")) {
+            MainActivity.hashMap.put("mapId",mapCode);
             socketManager.createMap(nickname, mapCode);
         } else {
+            MainActivity.hashMap.put("mapId",mapCode);
             socketManager.joinMap(nickname, mapCode);
         }
 
@@ -93,6 +96,37 @@ public class AndroidLauncher extends AndroidApplication {
                 Log.e("SOCKET", "Error in onPlayerJoined", e);
             }
         });
+        socketManager.onError(args -> {
+            try {
+                JSONObject errorData = (JSONObject) args[0];
+                String message = errorData.optString("message", "Unknown error");
+                Log.e("SOCKET", "Error received: " + message);
+
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Error: " + message, Toast.LENGTH_LONG).show();
+                    finish(); // Exit or redirect based on your logic
+                });
+            } catch (Exception e) {
+                Log.e("SOCKET", "Error parsing error event", e);
+            }
+        });
+
+        socketManager.onVoiceChannelCreation(args -> {
+            try {
+                JSONObject data = (JSONObject) args[0];
+                String voiceChannelCode = data.getString("voiceChannelCode");
+                String name = data.getString("playerName");
+
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Voice Channel Code: " + voiceChannelCode, Toast.LENGTH_SHORT).show();
+                });
+
+
+            } catch (Exception e) {
+                Log.e("SOCKET", "Error parsing error event", e);
+            }
+        });
+
 
         socketManager.onPlayerLeft(args -> {
             try {
@@ -124,6 +158,9 @@ public class AndroidLauncher extends AndroidApplication {
                 Log.e("SOCKET", "Error in onPlayerMoved", e);
             }
         });
+
+
+
 
         // === GAME INITIALIZATION ===
 
@@ -230,11 +267,17 @@ public class AndroidLauncher extends AndroidApplication {
         joinParams.setMargins(0, 0, 230, 60);
         rootLayout.addView(joinButtonView, joinParams);
 
+        ImageButton joinButton = joinButtonView.findViewById(R.id.joinVoiceChat);
+        joinButton.setOnClickListener(v -> {
+            openJoinVoicePopup(); // ✅ Open the popup when Join Button clicked
+        });
+
 // Set click listener
         ImageButton voiceButton = voiceButtonView.findViewById(R.id.buttonVoiceChat);
         voiceButton.setOnClickListener(v -> {
             String voiceChannelCode = generateVoiceChannelCode();  // Generate the voice channel code
-            SocketManager.getInstance().connectVoiceChannel(voiceChannelCode,nickname); // Connect to voice channel
+            String mapId = MainActivity.hashMap.get("mapId");
+            SocketManager.getInstance().createVoiceChannel(voiceChannelCode,nickname,mapId); // Connect to voice channel
 
 
 
@@ -278,7 +321,7 @@ public class AndroidLauncher extends AndroidApplication {
 
         // End call button logic
         endCallButton.setOnClickListener(v -> {
-            SocketManager.getInstance().disconnectVoiceChannel(); // Disconnect from voice channel
+            SocketManager.getInstance().disconnectVoiceChannel(MainActivity.hashMap.get("mapId")); // Disconnect from voice channel
             Player.setVoiceChatActive(null);
             dialog.dismiss(); // End call and close the popup
         });
@@ -308,6 +351,41 @@ public class AndroidLauncher extends AndroidApplication {
 
         // Add the user layout to the container
         container.addView(userLayout);
+    }
+
+    private void openJoinVoicePopup() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Light_Dialog_MinWidth);
+        View popupView = getLayoutInflater().inflate(R.layout.dialog_join_voice, null);
+        builder.setView(popupView);
+
+        final android.app.AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(false); // ❌ Don't close on outside click
+        dialog.setCancelable(true); // ✅ Allow back press to cancel if you want
+
+        dialog.show();
+
+        // Find views
+        TextView title = popupView.findViewById(R.id.voice_join_title);
+        EditText codeInput = popupView.findViewById(R.id.voice_code_input);
+        Button joinNowButton = popupView.findViewById(R.id.join_now_button);
+        Button cancelButton = popupView.findViewById(R.id.cancel_button);
+
+        // Handle join button
+        joinNowButton.setOnClickListener(v -> {
+            String code = codeInput.getText().toString().trim();
+            if (!code.isEmpty()) {
+                SocketManager.getInstance().connectVoiceChannel(code, MainActivity.hashMap.get("nickname"));
+                Toast.makeText(this, "Joining voice channel: " + code, Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            } else {
+                Toast.makeText(this, "Please enter a valid code", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Handle cancel button
+        cancelButton.setOnClickListener(v -> {
+            dialog.dismiss();
+        });
     }
 
     private String generateVoiceChannelCode() {

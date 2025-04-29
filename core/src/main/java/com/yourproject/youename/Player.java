@@ -76,7 +76,7 @@ public class Player {
         this.camera = camera;
         this.collisionHandler = new CollisionHandler(map);
 
-        spriteSheet = new Texture(Gdx.files.internal("girls1/c.png"));
+        spriteSheet = new Texture(Gdx.files.internal("character/c.png"));
 
         // ✅ FIXED: Removed ClassCastException — no casting needed
         TextureRegion[][] tempFrames = TextureRegion.split(

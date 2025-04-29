@@ -22,8 +22,6 @@ public class RemotePlayer {
     public void render(Batch batch) {
         if (Assets.remoteWalkAnimations == null) return;
 
-
-
         if (isMoving) {
             stateTime += Gdx.graphics.getDeltaTime();
         }

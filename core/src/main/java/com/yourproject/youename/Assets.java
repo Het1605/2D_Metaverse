@@ -23,7 +23,7 @@ public class Assets {
 
     public static void load() {
         // Load spritesheet
-        remoteAvatarTexture = new Texture(Gdx.files.internal("girls1/c.png"));
+        remoteAvatarTexture = new Texture(Gdx.files.internal("character/c.png"));
 
         TextureRegion[][] tempFrames = TextureRegion.split(
             remoteAvatarTexture,
