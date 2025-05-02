@@ -188,9 +188,22 @@ public class AndroidLauncher extends AndroidApplication {
 
                 // Update UI
                 runOnUiThread(() -> {
+                    // ✅ Clear voice channel label from avatar
+                    if (MyGame.remotePlayers != null) {
+                        for (RemotePlayer rp : MyGame.remotePlayers.values()) {
+                            if (rp.nickname.equals(name)) {
+                                rp.setVoiceChannelCode(null); // 🚨 Remove label
+                                break;
+                            }
+                        }
+                    }
+
+                    // ✅ Optionally: Remove from popup
                     if (activeVoiceDialog != null && activeVoiceDialog.isShowing()) {
                         removeUserDivByName(usersContainer, name);
                     }
+
+                    Toast.makeText(this, name + " left the voice channel", Toast.LENGTH_SHORT).show();
                 });
 
             } catch (Exception e) {
@@ -265,6 +278,16 @@ public class AndroidLauncher extends AndroidApplication {
                     voiceParticipants.put(playerId, name);
 
                     runOnUiThread(() -> {
+                        // ✅ Show voice label on avatar
+                        if (MyGame.remotePlayers != null) {
+                            for (RemotePlayer rp : MyGame.remotePlayers.values()) {
+                                if (rp.nickname.equals(name)) {
+                                    rp.setVoiceChannelCode(MainActivity.hashMap.get("voiceChannelCode"));
+                                    break;
+                                }
+                            }
+                        }
+
                         if (activeVoiceDialog != null && activeVoiceDialog.isShowing()) {
                             addUserDiv(usersContainer, name, false);
                         }
@@ -533,7 +556,7 @@ public class AndroidLauncher extends AndroidApplication {
     private String generateVoiceChannelCode() {
         final String characters = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789";
         StringBuilder code = new StringBuilder();
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 5; i++) {
             int randomIndex = (int) (Math.random() * characters.length());
             code.append(characters.charAt(randomIndex));
         }
