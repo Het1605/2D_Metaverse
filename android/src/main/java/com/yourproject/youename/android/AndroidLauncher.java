@@ -146,29 +146,57 @@ public class AndroidLauncher extends AndroidApplication {
             }
         });
 
+//        socketManager.onPlayerLeftChannel(args -> {
+//            try {
+//                JSONObject data = (JSONObject) args[0];
+//                String name = data.getString("playerName");
+//
+//                // Update the remote player label
+//                if (MyGame.remotePlayers != null) {
+//                    for (RemotePlayer rp : MyGame.remotePlayers.values()) {
+//                        if (rp.nickname.equals(name)) {
+//                            rp.setVoiceChannelCode(null);
+//                            break;
+//                        }
+//                    }
+//                }
+//
+//                runOnUiThread(() -> {
+//                    Toast.makeText(this, "Voice Channel Code Remove: " , Toast.LENGTH_SHORT).show();
+//                });
+//            } catch (Exception e){
+//                Log.e("SOCKET","Error in Player left voice channel");
+//            }
+//        });
+
         socketManager.onPlayerLeftChannel(args -> {
             try {
                 JSONObject data = (JSONObject) args[0];
                 String name = data.getString("playerName");
 
-                // Update the remote player label
-                if (MyGame.remotePlayers != null) {
-                    for (RemotePlayer rp : MyGame.remotePlayers.values()) {
-                        if (rp.nickname.equals(name)) {
-                            rp.setVoiceChannelCode(null);
-                            break;
-                        }
+                // Remove from voiceParticipants map
+                String playerKeyToRemove = null;
+                for (String key : voiceParticipants.keySet()) {
+                    if (voiceParticipants.get(key).equals(name)) {
+                        playerKeyToRemove = key;
+                        break;
                     }
                 }
+                if (playerKeyToRemove != null) {
+                    voiceParticipants.remove(playerKeyToRemove);
+                }
 
+                // Update UI
                 runOnUiThread(() -> {
-                    Toast.makeText(this, "Voice Channel Code Remove: " , Toast.LENGTH_SHORT).show();
+                    if (activeVoiceDialog != null && activeVoiceDialog.isShowing()) {
+                        removeUserDivByName(usersContainer, name);
+                    }
                 });
-            } catch (Exception e){
-                Log.e("SOCKET","Error in Player left voice channel");
+
+            } catch (Exception e) {
+                Log.e("SOCKET", "Error in onPlayerLeftChannel", e);
             }
         });
-
 
         socketManager.onPlayerLeft(args -> {
             try {
@@ -486,6 +514,21 @@ public class AndroidLauncher extends AndroidApplication {
         });
     }
 
+    private void removeUserDivByName(LinearLayout container, String userName) {
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            if (child instanceof LinearLayout) {
+                LinearLayout layout = (LinearLayout) child;
+                if (layout.getChildCount() > 1 && layout.getChildAt(1) instanceof TextView) {
+                    TextView textView = (TextView) layout.getChildAt(1);
+                    if (textView.getText().toString().equals(userName)) {
+                        container.removeViewAt(i);
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     private String generateVoiceChannelCode() {
         final String characters = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789";
