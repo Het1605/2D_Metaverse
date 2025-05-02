@@ -13,6 +13,9 @@ public class RemotePlayer {
     private float stateTime = 0f;
     private GlyphLayout layout = new GlyphLayout();
 
+    private String voiceChannelCode = null;  // New field
+    private GlyphLayout voiceLayout = new GlyphLayout();
+
     public RemotePlayer(float x, float y, String nickname) {
         this.x = x;
         this.y = y;
@@ -47,5 +50,25 @@ public class RemotePlayer {
             textWidth + 2 * padding, textHeight + 2 * padding);
 
         Assets.nameFont.draw(batch, layout, textX, textY);
+
+        // === VOICE LABEL below the player ===
+        if (voiceChannelCode != null) {
+            String label = "Voice: " + voiceChannelCode;
+            voiceLayout.setText(Assets.nameFont, label);
+            float voiceWidth = voiceLayout.width;
+            float voiceHeight = voiceLayout.height;
+
+            float voiceX = x + width / 2 - voiceWidth / 2;
+            float voiceY = y - 15;  // below the feet of avatar
+
+            Assets.nameBackground.draw(batch, voiceX - padding, voiceY - voiceHeight - padding,
+                voiceWidth + 2 * padding, voiceHeight + 2 * padding);
+
+            Assets.nameFont.draw(batch, voiceLayout, voiceX, voiceY);
+        }
+    }
+
+    public void setVoiceChannelCode(String code) {
+        this.voiceChannelCode = code;
     }
 }

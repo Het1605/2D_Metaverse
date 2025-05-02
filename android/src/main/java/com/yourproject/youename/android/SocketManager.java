@@ -131,15 +131,42 @@ public class SocketManager {
         socket.on("voiceChannelCreated",listener);
     }
 
-    public void disconnectVoiceChannel(String mapId) {
+    public void disconnectVoiceChannel(String mapId,String voiceChannelCode,String playerName) {
         try {
             JSONObject data = new JSONObject();
             data.put("mapId",mapId);
+            data.put("voiceChannelCode",voiceChannelCode);
+            data.put("playerName",playerName);
             socket.emit("leaveVoiceChannel",data);
         } catch (Exception e) {
             Log.e("SocketManager", "Error disconnecting from voice channel", e);
         }
     }
+
+    public void onPlayerLeftChannel(Emitter.Listener listener) {
+        socket.on("playerLeftChannel", listener);
+    }
+
+
+    public void onCurrentPlayersInVoiceChannel(Emitter.Listener listener){
+        socket.on("currentPlayersInVoiceChannel",listener);
+    }
+    public void onPlayerJoinedVoiceChannel(Emitter.Listener listener){
+        socket.on("playerJoinedVoiceChannel",listener);
+    }
+    public void joinVoiceChannel(String channelCode,String nickname,String mapId) {
+        try {
+            JSONObject data = new JSONObject();
+            data.put("voiceChannelCode", channelCode);
+            data.put("playerName",nickname);
+            data.put("mapId",mapId);
+            socket.emit("joinVoiceChannel", data);
+            Log.d("SocketManager", "Player join Voice channel " + channelCode + " connected.");
+        } catch (JSONException e) {
+            Log.e("SocketManager", "Error connecting to voice channel", e);
+        }
+    }
+
 
     public void onError(Emitter.Listener listener) {
         socket.on("error", listener);

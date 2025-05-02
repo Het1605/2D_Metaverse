@@ -2,6 +2,7 @@ package com.yourproject.youename.android;
 
 import static com.yourproject.youename.MyGame.player;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
@@ -28,7 +29,14 @@ import com.yourproject.youename.SocketBridge;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.HashMap;
+import java.util.HashSet;
+
 public class AndroidLauncher extends AndroidApplication {
+    private final HashMap<String, String> voiceParticipants = new HashMap<>();
+    private AlertDialog activeVoiceDialog; // to manage the open popup
+    private LinearLayout usersContainer;  // UI container inside dialog
+    private boolean isVoicePopupOpen = false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,6 +62,7 @@ public class AndroidLauncher extends AndroidApplication {
 
         socketManager.onCurrentPlayers(args -> {
             try {
+
                 JSONArray players = (JSONArray) args[0];
                 for (int i = 0; i < players.length(); i++) {
 
@@ -117,6 +126,16 @@ public class AndroidLauncher extends AndroidApplication {
                 String voiceChannelCode = data.getString("voiceChannelCode");
                 String name = data.getString("playerName");
 
+                // Update the remote player label
+                if (MyGame.remotePlayers != null) {
+                    for (RemotePlayer rp : MyGame.remotePlayers.values()) {
+                        if (rp.nickname.equals(name)) {
+                            rp.setVoiceChannelCode(voiceChannelCode);
+                            break;
+                        }
+                    }
+                }
+
                 runOnUiThread(() -> {
                     Toast.makeText(this, "Voice Channel Code: " + voiceChannelCode, Toast.LENGTH_SHORT).show();
                 });
@@ -124,6 +143,29 @@ public class AndroidLauncher extends AndroidApplication {
 
             } catch (Exception e) {
                 Log.e("SOCKET", "Error parsing error event", e);
+            }
+        });
+
+        socketManager.onPlayerLeftChannel(args -> {
+            try {
+                JSONObject data = (JSONObject) args[0];
+                String name = data.getString("playerName");
+
+                // Update the remote player label
+                if (MyGame.remotePlayers != null) {
+                    for (RemotePlayer rp : MyGame.remotePlayers.values()) {
+                        if (rp.nickname.equals(name)) {
+                            rp.setVoiceChannelCode(null);
+                            break;
+                        }
+                    }
+                }
+
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Voice Channel Code Remove: " , Toast.LENGTH_SHORT).show();
+                });
+            } catch (Exception e){
+                Log.e("SOCKET","Error in Player left voice channel");
             }
         });
 
@@ -159,6 +201,52 @@ public class AndroidLauncher extends AndroidApplication {
             }
         });
 
+        socketManager.onCurrentPlayersInVoiceChannel(args -> {
+            try {
+                JSONArray players = (JSONArray) args[0];
+                voiceParticipants.clear();
+
+                String myNickname = MainActivity.hashMap.get("nickname");
+
+
+                for (int i = 0; i < players.length(); i++) {
+                    JSONObject p = players.getJSONObject(i);
+                    String playerId = p.getString("playerId");
+                    String playerName = p.getString("playerName");
+                    voiceParticipants.put(playerId, playerName);
+
+
+                }
+
+
+                    runOnUiThread(() -> showVoiceChatPopup(MainActivity.hashMap.get("voiceChannelCode")));
+
+            } catch (Exception e) {
+                Log.e("SOCKET", "Error in onCurrentPlayersInVoiceChannel", e);
+            }
+        });
+
+        socketManager.onPlayerJoinedVoiceChannel(args -> {
+            try {
+                JSONObject data = (JSONObject) args[0];
+                String playerId = data.getString("playerId");
+                String name = data.getString("playerName");
+
+
+                if (!voiceParticipants.containsKey(playerId)) {
+                    voiceParticipants.put(playerId, name);
+
+                    runOnUiThread(() -> {
+                        if (activeVoiceDialog != null && activeVoiceDialog.isShowing()) {
+                            addUserDiv(usersContainer, name, false);
+                        }
+                    });
+                }
+
+            } catch (Exception e) {
+                Log.e("SOCKET", "Error in onPlayerJoinedVoiceChannel", e);
+            }
+        });
 
 
 
@@ -277,18 +365,15 @@ public class AndroidLauncher extends AndroidApplication {
         voiceButton.setOnClickListener(v -> {
             String voiceChannelCode = generateVoiceChannelCode();  // Generate the voice channel code
             String mapId = MainActivity.hashMap.get("mapId");
+            MainActivity.hashMap.put("voiceChannelCode",voiceChannelCode);
             SocketManager.getInstance().createVoiceChannel(voiceChannelCode,nickname,mapId); // Connect to voice channel
-
-
-
 
 
             MyGame.pendingVoiceChatCode = voiceChannelCode;
             Toast.makeText(this, "Connected to voice channel: " + voiceChannelCode, Toast.LENGTH_SHORT).show();
             Player.setVoiceChatActive(voiceChannelCode);
-            openVoiceChatPopup();  // Open voice chat popup
-
-
+            voiceParticipants.put("creator",nickname);
+            showVoiceChatPopup(voiceChannelCode);
         });
 
 
@@ -299,34 +384,46 @@ public class AndroidLauncher extends AndroidApplication {
 
 
 
-    private void openVoiceChatPopup() {
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
+    private void showVoiceChatPopup(String voiceChannelCode) {
+        if (isVoicePopupOpen) return; // Prevent multiple popups
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
         View popupView = getLayoutInflater().inflate(R.layout.dialog_voice_chat, null);
         builder.setView(popupView);
 
-        final android.app.AlertDialog dialog = builder.create();
-        dialog.setCanceledOnTouchOutside(false); // ❌ Don't close by clicking outside
-        dialog.setCancelable(false); // ❌ Don't close by back button
+        activeVoiceDialog = builder.create();
+        activeVoiceDialog.setCanceledOnTouchOutside(false);
+        activeVoiceDialog.setCancelable(false);
+        activeVoiceDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        activeVoiceDialog.show();
 
-        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        dialog.show();
+        isVoicePopupOpen = true;
 
-        // Get references to buttons
         ImageButton endCallButton = popupView.findViewById(R.id.end_call_button);
-        LinearLayout usersContainer = popupView.findViewById(R.id.users_container);
+        usersContainer = popupView.findViewById(R.id.users_container);
+        HashSet <String> participantsSet = new HashSet<>();
+        // Add all current participants
+        participantsSet.addAll(voiceParticipants.values());
+        if (voiceParticipants != null && !voiceParticipants.isEmpty()) {
+            participantsSet.addAll(voiceParticipants.values());
+            for (String name : participantsSet) {
+                if (name != null && !name.isEmpty()) {
+                    addUserDiv(usersContainer, name, false);  // Avoid null crash
+                }
+            }
+        }
 
-        // Dynamically add user divs with circles (active speakers will have a green border)
-        addUserDiv(usersContainer, "User 1", true);  // Example user who's talking
-        addUserDiv(usersContainer, "User 2", false); // Example user who's not talking
-
-        // End call button logic
         endCallButton.setOnClickListener(v -> {
-            SocketManager.getInstance().disconnectVoiceChannel(MainActivity.hashMap.get("mapId")); // Disconnect from voice channel
+            SocketManager.getInstance().disconnectVoiceChannel(
+                MainActivity.hashMap.get("mapId"),
+                voiceChannelCode,
+                MainActivity.hashMap.get("nickname")
+            );
             Player.setVoiceChatActive(null);
-            dialog.dismiss(); // End call and close the popup
+            activeVoiceDialog.dismiss();
+            isVoicePopupOpen = false;
         });
     }
-
     // Method to add a user circle dynamically
     private void addUserDiv(LinearLayout container, String userName, boolean isSpeaking) {
         // Create a new LinearLayout for each user
@@ -373,8 +470,9 @@ public class AndroidLauncher extends AndroidApplication {
         // Handle join button
         joinNowButton.setOnClickListener(v -> {
             String code = codeInput.getText().toString().trim();
+            MainActivity.hashMap.put("voiceChannelCode",code);
             if (!code.isEmpty()) {
-                SocketManager.getInstance().connectVoiceChannel(code, MainActivity.hashMap.get("nickname"));
+                SocketManager.getInstance().joinVoiceChannel(code, MainActivity.hashMap.get("nickname"),MainActivity.hashMap.get("mapId"));
                 Toast.makeText(this, "Joining voice channel: " + code, Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
             } else {
@@ -388,8 +486,9 @@ public class AndroidLauncher extends AndroidApplication {
         });
     }
 
+
     private String generateVoiceChannelCode() {
-        final String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        final String characters = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789";
         StringBuilder code = new StringBuilder();
         for (int i = 0; i < 8; i++) {
             int randomIndex = (int) (Math.random() * characters.length());
