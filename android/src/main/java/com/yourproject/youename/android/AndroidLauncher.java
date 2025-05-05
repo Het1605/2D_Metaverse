@@ -1,6 +1,6 @@
 package com.yourproject.youename.android;
 
-import static com.yourproject.youename.MyGame.player;
+import static com.yourproject.youename.Main.nickname;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
@@ -28,18 +28,29 @@ import com.yourproject.youename.SocketBridge;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.webrtc.*;
 
 import java.util.HashMap;
 import java.util.HashSet;
+
+
+
 
 public class AndroidLauncher extends AndroidApplication {
     private final HashMap<String, String> voiceParticipants = new HashMap<>();
     private AlertDialog activeVoiceDialog; // to manage the open popup
     private LinearLayout usersContainer;  // UI container inside dialog
     private boolean isVoicePopupOpen = false;
+
+    public static VoiceManager voiceManager;
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
 
         String nickname = MainActivity.hashMap.get("nickname");
         Toast.makeText(this, "nickname: " + nickname, Toast.LENGTH_SHORT).show();
@@ -47,6 +58,7 @@ public class AndroidLauncher extends AndroidApplication {
         String mapCode = getIntent().getStringExtra("MAP_CODE");
         SocketManager socketManager = SocketManager.getInstance();
         socketManager.connectSocket();
+
 
         // Only call one of these based on "creating"
         if (MainActivity.hashMap.containsKey("creating") &&
@@ -146,28 +158,6 @@ public class AndroidLauncher extends AndroidApplication {
             }
         });
 
-//        socketManager.onPlayerLeftChannel(args -> {
-//            try {
-//                JSONObject data = (JSONObject) args[0];
-//                String name = data.getString("playerName");
-//
-//                // Update the remote player label
-//                if (MyGame.remotePlayers != null) {
-//                    for (RemotePlayer rp : MyGame.remotePlayers.values()) {
-//                        if (rp.nickname.equals(name)) {
-//                            rp.setVoiceChannelCode(null);
-//                            break;
-//                        }
-//                    }
-//                }
-//
-//                runOnUiThread(() -> {
-//                    Toast.makeText(this, "Voice Channel Code Remove: " , Toast.LENGTH_SHORT).show();
-//                });
-//            } catch (Exception e){
-//                Log.e("SOCKET","Error in Player left voice channel");
-//            }
-//        });
 
         socketManager.onPlayerLeftChannel(args -> {
             try {
@@ -184,6 +174,12 @@ public class AndroidLauncher extends AndroidApplication {
                 }
                 if (playerKeyToRemove != null) {
                     voiceParticipants.remove(playerKeyToRemove);
+
+                    PeerConnection peerConnection = voiceManager.getPeerConnection(playerKeyToRemove);
+                    if (peerConnection != null) {
+                        peerConnection.close();
+                        voiceManager.removePeerConnection(playerKeyToRemove);
+                    }
                 }
 
                 // Update UI
@@ -256,6 +252,11 @@ public class AndroidLauncher extends AndroidApplication {
                     String playerName = p.getString("playerName");
                     voiceParticipants.put(playerId, playerName);
 
+                    if (!playerName.equals(myNickname)) {
+                        // Skip connecting to yourself
+                        PeerConnection peerConnection = voiceManager.createPeerConnection(playerId); // Setup peer connection
+                        voiceManager.createOffer(playerId);         // Create and send offer
+                    }
 
                 }
 
@@ -292,7 +293,11 @@ public class AndroidLauncher extends AndroidApplication {
                             addUserDiv(usersContainer, name, false);
                         }
                     });
+                    // Create peer connection and send offer
+                    PeerConnection peerConnection = voiceManager.createPeerConnection(playerId);
+                    voiceManager.createOffer(playerId);
                 }
+
 
             } catch (Exception e) {
                 Log.e("SOCKET", "Error in onPlayerJoinedVoiceChannel", e);
@@ -420,9 +425,12 @@ public class AndroidLauncher extends AndroidApplication {
             SocketManager.getInstance().createVoiceChannel(voiceChannelCode,nickname,mapId); // Connect to voice channel
 
 
+            voiceManager = new VoiceManager(SocketManager.getSocket(),nickname,voiceChannelCode,this);
+
             MyGame.pendingVoiceChatCode = voiceChannelCode;
             Toast.makeText(this, "Connected to voice channel: " + voiceChannelCode, Toast.LENGTH_SHORT).show();
             Player.setVoiceChatActive(voiceChannelCode);
+
             voiceParticipants.put("creator",nickname);
             showVoiceChatPopup(voiceChannelCode);
         });
@@ -431,6 +439,8 @@ public class AndroidLauncher extends AndroidApplication {
 
         rootLayout.addView(buttonContainer);
         setContentView(rootLayout);
+
+
     }
 
 
@@ -474,6 +484,8 @@ public class AndroidLauncher extends AndroidApplication {
             activeVoiceDialog.dismiss();
             isVoicePopupOpen = false;
         });
+
+
     }
     // Method to add a user circle dynamically
     private void addUserDiv(LinearLayout container, String userName, boolean isSpeaking) {
@@ -524,6 +536,7 @@ public class AndroidLauncher extends AndroidApplication {
             MainActivity.hashMap.put("voiceChannelCode",code);
             if (!code.isEmpty()) {
                 SocketManager.getInstance().joinVoiceChannel(code, MainActivity.hashMap.get("nickname"),MainActivity.hashMap.get("mapId"));
+                voiceManager = new VoiceManager(SocketManager.getSocket(),nickname,code,this);
                 Toast.makeText(this, "Joining voice channel: " + code, Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
             } else {

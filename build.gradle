@@ -7,6 +7,10 @@ buildscript {
     google()
     maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     maven { url 'https://s01.oss.sonatype.org/content/repositories/snapshots/' }
+    maven {
+      url 'https://webrtc.github.io/webrtc-org/native-code/android'
+    }
+    maven { url 'https://jitpack.io/' }
   }
   dependencies {
     classpath "com.android.tools.build:gradle:8.5.0"
@@ -68,7 +72,9 @@ subprojects {
     maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     maven { url 'https://s01.oss.sonatype.org/content/repositories/snapshots/' }
     maven { url 'https://jitpack.io' }
+    maven { url 'https://webrtc-sdk.github.io/maven-repo/release' }
   }
 }
 
 eclipse.project.name = '2D metaverse' + '-parent'
+

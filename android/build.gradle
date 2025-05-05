@@ -39,8 +39,8 @@ android {
     multiDexEnabled true
   }
   compileOptions {
-    sourceCompatibility "8"
-    targetCompatibility "8"
+    sourceCompatibility "11"
+    targetCompatibility "11"
     coreLibraryDesugaringEnabled true
   }
   buildTypes {
@@ -86,11 +86,7 @@ dependencies {
   implementation 'com.pusher:push-notifications-android:1.10.0'
   implementation 'androidx.appcompat:appcompat:1.6.1' // ✅ or latest stable
   implementation 'com.pusher:pusher-java-client:2.4.2'
-
-
-
-
-
+  implementation 'io.github.webrtc-sdk:android:125.6422.07'
   implementation project(':core')
 
 

@@ -1,7 +1,10 @@
 package com.example.multiplayerui;
 
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -18,6 +21,7 @@ import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final int REQUEST_MICROPHONE_PERMISSION = 1;
     private LinearLayout mainBox, createBox, joinBox;
     private TextView mapCodeText;
     private EditText mapCodeInput;
@@ -29,6 +33,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_MICROPHONE_PERMISSION);
+            }
+        }
 
         mainBox = findViewById(R.id.mainBox);
         createBox = findViewById(R.id.createRoomBox);
@@ -98,4 +108,18 @@ public class MainActivity extends AppCompatActivity {
         }
         return code.toString();
     }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQUEST_MICROPHONE_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Microphone permission granted", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Microphone permission denied", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
 }
