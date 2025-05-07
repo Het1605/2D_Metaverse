@@ -1,6 +1,8 @@
 package com.yourproject.youename.android;
 
 
+import android.content.Context;
+import android.media.AudioManager;
 import android.util.Log;
 import org.webrtc.*;
 import io.socket.client.Socket;
@@ -23,6 +25,7 @@ public class VoiceManager {
     private PeerConnection.Observer peerObserver = new PeerConnection.Observer() {
         @Override
         public void onIceCandidate(IceCandidate candidate) {
+            Log.d(TAG, "ICE Candidate created: " + candidate.sdp);
             sendIceCandidate(candidate);
         }
 
@@ -32,8 +35,12 @@ public class VoiceManager {
         }
 
         @Override public void onAddStream(MediaStream mediaStream) {
+            Log.d(TAG, "onAddStream triggered");
+
             if (mediaStream.audioTracks.size() > 0) {
-                mediaStream.audioTracks.get(0).setEnabled(true); // Enable the incoming audio track
+
+                AudioTrack remoteAudioTrack = mediaStream.audioTracks.get(0); // Enable the incoming audio track
+                remoteAudioTrack.setEnabled(true);
                 Log.d(TAG, "Incoming audio stream added.");
             }
         }
@@ -44,44 +51,86 @@ public class VoiceManager {
         @Override public void onSignalingChange(PeerConnection.SignalingState signalingState) {}
         @Override public void onRemoveStream(MediaStream mediaStream) {}
         @Override public void onRenegotiationNeeded() {}
-        @Override public void onTrack(RtpTransceiver transceiver) {}
+        @Override public void onTrack(RtpTransceiver transceiver) {
+            Log.d(TAG, "onTrack triggered");
+
+            MediaStreamTrack track = transceiver.getReceiver().track();
+            if (track instanceof AudioTrack) {
+                AudioTrack remoteAudioTrack = (AudioTrack) track;
+                remoteAudioTrack.setEnabled(true);
+                // Optionally: log or attach a sink if required
+                Log.d("Voice", "Remote audio track received and enabled.");
+            }
+        }
     };
 
     public VoiceManager(Socket socket, String senderId, String voiceChannelCode, android.content.Context context) {
         this.socket = socket;
         this.senderId = senderId;
         this.voiceChannelCode = voiceChannelCode;
+
+
         initPeerFactory(context);
         registerSocketEvents();
     }
 
     private void initPeerFactory(android.content.Context context) {
         PeerConnectionFactory.initialize(
-            PeerConnectionFactory.InitializationOptions.builder(context)
+            PeerConnectionFactory.InitializationOptions.builder(context).setEnableInternalTracer(true)
                 .createInitializationOptions()
         );
         factory = PeerConnectionFactory.builder().createPeerConnectionFactory();
+
+        Log.d(TAG, "PeerConnectionFactory initialized: " + (factory != null));
     }
     public PeerConnection createPeerConnection(String targetId) {
+        Log.d(TAG, "Creating PeerConnection for targetId: " + targetId);
+
         PeerConnection.RTCConfiguration config = new PeerConnection.RTCConfiguration(new java.util.ArrayList<>());
         config.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN; // Ensure Unified Plan is explicitly set
 
+        config.iceServers.add(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer());
+//        config.iceServers.add(PeerConnection.IceServer.builder("turn:2409:40c1:3a:1486:f5b7:c573:cb80:bf4f:3478")
+//            .setUsername("user1")
+//            .setPassword("password1")
+//            .createIceServer());
+
         PeerConnection peer = factory.createPeerConnection(config, peerObserver);
+
+        if(peer == null){
+            Log.e(TAG,"failed to create peer creation");
+            return null;
+        }
 
         // Setup audio
         MediaConstraints audioConstraints = new MediaConstraints();
         AudioSource audioSource = factory.createAudioSource(audioConstraints);
         AudioTrack localAudioTrack = factory.createAudioTrack("ARDAMSa0", audioSource);
 
+
+        if (audioSource == null) {
+            Log.e(TAG, "Failed to create AudioSource");
+            return null;
+        }
+
+        if (localAudioTrack == null) {
+            Log.e(TAG, "Failed to create AudioTrack");
+            return null;
+        }
+
         // Add the audio track to the peer connection
         peer.addTrack(localAudioTrack);
 
         peerConnections.put(targetId, peer);
+
+        Log.d(TAG, "PeerConnection created and local audio track added.");
         return peer;
     }
 
 
     public void createOffer(String targetId) {
+        Log.d(TAG, "Creating offer for target: " + targetId);
+
         PeerConnection peer = peerConnections.get(targetId);
         if (peer == null) peer = createPeerConnection(targetId);
 
@@ -89,6 +138,8 @@ public class VoiceManager {
         peer.createOffer(new SdpObserverAdapter() {
             @Override
             public void onCreateSuccess(SessionDescription sdp) {
+                Log.d(TAG, "Offer created successfully.");
+
                 finalPeer.setLocalDescription(new SdpObserverAdapter(), sdp);
                 sendOffer(sdp, targetId);
             }
@@ -96,10 +147,14 @@ public class VoiceManager {
     }
 
     public void createAnswer(String targetId) {
+        Log.d(TAG, "Creating answer for target: " + targetId);
+
         PeerConnection peer = peerConnections.get(targetId);
         peer.createAnswer(new SdpObserverAdapter() {
             @Override
             public void onCreateSuccess(SessionDescription sdp) {
+                Log.d(TAG, "Answer created successfully.");
+
                 peer.setLocalDescription(new SdpObserverAdapter(), sdp);
                 sendAnswer(sdp, targetId);
             }
@@ -107,6 +162,8 @@ public class VoiceManager {
     }
 
     public void handleOffer(String from, JSONObject offerJson) {
+        Log.d(TAG, "Received offer from: " + from);
+
         PeerConnection peer = createPeerConnection(from);
         SessionDescription offer = new SessionDescription(
             SessionDescription.Type.OFFER,
@@ -117,6 +174,8 @@ public class VoiceManager {
     }
 
     public void handleAnswer(String from, JSONObject answerJson) {
+        Log.d(TAG, "Received answer from: " + from);
+
         PeerConnection peer = peerConnections.get(from);
         SessionDescription answer = new SessionDescription(
             SessionDescription.Type.ANSWER,
@@ -126,7 +185,13 @@ public class VoiceManager {
     }
 
     public void handleCandidate(String from, JSONObject candidateJson) {
+        Log.d(TAG, "Received ICE candidate from: " + from);
+
         PeerConnection peer = peerConnections.get(from);
+        if(peer ==null){
+            Log.e(TAG,"Peer Connection is not found for:" + from);
+            return;
+        }
         IceCandidate candidate = new IceCandidate(
             candidateJson.optString("sdpMid"),
             candidateJson.optInt("sdpMLineIndex"),
@@ -136,6 +201,8 @@ public class VoiceManager {
     }
 
     private void sendOffer(SessionDescription sdp, String to) {
+        Log.d(TAG, "Sending offer to: " + to);
+
         try {
             JSONObject offer = new JSONObject();
             offer.put("type", sdp.type.canonicalForm());
@@ -153,6 +220,8 @@ public class VoiceManager {
     }
 
     private void sendAnswer(SessionDescription sdp, String to) {
+        Log.d(TAG, "Sending answer to: " + to);
+
         try {
             JSONObject answer = new JSONObject();
             answer.put("type", sdp.type.canonicalForm());
@@ -170,6 +239,8 @@ public class VoiceManager {
     }
 
     private void sendIceCandidate(IceCandidate candidate) {
+        Log.d(TAG, "Sending ICE candidate: " + candidate.sdp);
+
         try {
             JSONObject ice = new JSONObject();
             ice.put("sdpMid", candidate.sdpMid);
@@ -189,19 +260,26 @@ public class VoiceManager {
 
     private void registerSocketEvents() {
         socket.on("webrtcOffer", args -> {
+
             JSONObject data = (JSONObject) args[0];
+            Log.d(TAG, "Received 'webrtcOffer' event.");
+
             String from = data.optString("sender");
             handleOffer(from, data.optJSONObject("offer"));
         });
 
         socket.on("webrtcAnswer", args -> {
             JSONObject data = (JSONObject) args[0];
+            Log.d(TAG, "Received 'webrtcAnswer' event.");
+
             String from = data.optString("sender");
             handleAnswer(from, data.optJSONObject("answer"));
         });
 
         socket.on("iceCandidate", args -> {
             JSONObject data = (JSONObject) args[0];
+            Log.d(TAG, "Received 'iceCandidate' event.");
+
             String from = data.optString("sender");
             handleCandidate(from, data.optJSONObject("candidate"));
         });

@@ -78,7 +78,7 @@ public class Player {
 
         spriteSheet = new Texture(Gdx.files.internal("character/c.png"));
 
-        // ✅ FIXED: Removed ClassCastException — no casting needed
+        //  FIXED: Removed ClassCastException — no casting needed
         TextureRegion[][] tempFrames = TextureRegion.split(
             spriteSheet,
             spriteSheet.getWidth() / FRAME_COLS,
@@ -130,7 +130,7 @@ public class Player {
                 position.set(newPos);
                 isMoving = true;
 
-                // ✅ Emit movement via the bridge
+                //  Emit movement via the bridge
                 if (MyGame.socketBridge != null) {
                     MyGame.socketBridge.emitPlayerMoved(position.x, position.y, currentDirection, isMoving);
                 }
@@ -140,7 +140,7 @@ public class Player {
         if (isMoving) stateTime += delta;
         else stateTime = 0;
 
-        // 📷 Clamp camera to stay within map bounds
+        //  Clamp camera to stay within map bounds
         float cameraHalfWidth = viewportWidth / 2f;
         float cameraHalfHeight = viewportHeight / 2f;
 
@@ -156,7 +156,7 @@ public class Player {
 
     }
 
-    // ✅ ADD THIS method to update voice chat code dynamically
+    //  ADD THIS method to update voice chat code dynamically
     public static void setVoiceChatActive(String code) {
         voiceChatCode = code;
     }

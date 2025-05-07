@@ -1,6 +1,7 @@
 package com.yourproject.youename.android;
 
 
+import android.content.Context;
 import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -65,12 +66,12 @@ public class SocketManager {
                     JSONObject offer = data.getJSONObject("offer");
                     String sender = data.getString("sender");
 
-                    SessionDescription sdpOffer = new SessionDescription(
-                        SessionDescription.Type.OFFER, offer.getString("sdp"));
 
-                    // Pass to your PeerConnection logic
-                    // Example (make sure these methods exist):
-                    // WebRTCManager.getInstance().onReceivedOffer(sdpOffer, sender);
+                    VoiceManager voiceManager = AndroidLauncher.voiceManager;
+                    if(voiceManager != null){
+                        voiceManager.handleOffer(sender,offer);
+                    }
+
 
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -81,12 +82,13 @@ public class SocketManager {
                 try {
                     JSONObject data = (JSONObject) args[0];
                     JSONObject answer = data.getJSONObject("answer");
+                    String sender = data.getString("sender");
 
-                    SessionDescription sdpAnswer = new SessionDescription(
-                        SessionDescription.Type.ANSWER, answer.getString("sdp"));
 
-                    // Example usage:
-                    // WebRTCManager.getInstance().onReceivedAnswer(sdpAnswer);
+                    VoiceManager voiceManager = AndroidLauncher.voiceManager;
+                    if(voiceManager != null){
+                        voiceManager.handleAnswer(sender,answer);
+                    }
 
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -97,11 +99,18 @@ public class SocketManager {
                 try {
                     JSONObject data = (JSONObject) args[0];
                     JSONObject candidateJson = data.getJSONObject("candidate");
+                    String sender = data.getString("sender");
+
 
                     IceCandidate candidate = new IceCandidate(
                         candidateJson.getString("sdpMid"),
                         candidateJson.getInt("sdpMLineIndex"),
                         candidateJson.getString("candidate"));
+
+                    VoiceManager voiceManager = AndroidLauncher.voiceManager;
+                    if(voiceManager != null){
+                        voiceManager.handleCandidate(sender,candidateJson);
+                    }
 
                     // Example usage:
                     // WebRTCManager.getInstance().onRemoteIceCandidate(candidate);
@@ -221,7 +230,7 @@ public class SocketManager {
     public void onPlayerJoinedVoiceChannel(Emitter.Listener listener){
         socket.on("playerJoinedVoiceChannel",listener);
     }
-    public void joinVoiceChannel(String channelCode,String nickname,String mapId) {
+    public void joinVoiceChannel(String channelCode, String nickname, String mapId, Context context) {
         try {
             JSONObject data = new JSONObject();
             data.put("voiceChannelCode", channelCode);
@@ -229,6 +238,8 @@ public class SocketManager {
             data.put("mapId",mapId);
             socket.emit("joinVoiceChannel", data);
             Log.d("SocketManager", "Player join Voice channel " + channelCode + " connected.");
+
+            AndroidLauncher.voiceManager = new VoiceManager(socket,nickname,channelCode,context);
         } catch (JSONException e) {
             Log.e("SocketManager", "Error connecting to voice channel", e);
         }

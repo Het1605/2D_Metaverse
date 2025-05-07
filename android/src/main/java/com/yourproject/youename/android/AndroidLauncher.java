@@ -2,7 +2,9 @@ package com.yourproject.youename.android;
 
 import static com.yourproject.youename.Main.nickname;
 
+import android.Manifest;
 import android.app.AlertDialog;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
@@ -15,6 +17,10 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
@@ -50,6 +56,12 @@ public class AndroidLauncher extends AndroidApplication {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Request RECORD_AUDIO permission
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.RECORD_AUDIO}, 1001);
+        }
 
 
         String nickname = MainActivity.hashMap.get("nickname");
@@ -184,7 +196,7 @@ public class AndroidLauncher extends AndroidApplication {
 
                 // Update UI
                 runOnUiThread(() -> {
-                    // ✅ Clear voice channel label from avatar
+                    //  Clear voice channel label from avatar
                     if (MyGame.remotePlayers != null) {
                         for (RemotePlayer rp : MyGame.remotePlayers.values()) {
                             if (rp.nickname.equals(name)) {
@@ -194,7 +206,7 @@ public class AndroidLauncher extends AndroidApplication {
                         }
                     }
 
-                    // ✅ Optionally: Remove from popup
+                    // Optionally: Remove from popup
                     if (activeVoiceDialog != null && activeVoiceDialog.isShowing()) {
                         removeUserDivByName(usersContainer, name);
                     }
@@ -432,7 +444,9 @@ public class AndroidLauncher extends AndroidApplication {
             Player.setVoiceChatActive(voiceChannelCode);
 
             voiceParticipants.put("creator",nickname);
-            showVoiceChatPopup(voiceChannelCode);
+            runOnUiThread(()->{
+                showVoiceChatPopup(voiceChannelCode);
+            });
         });
 
 
@@ -445,8 +459,15 @@ public class AndroidLauncher extends AndroidApplication {
 
 
 
+
     private void showVoiceChatPopup(String voiceChannelCode) {
         if (isVoicePopupOpen) return; // Prevent multiple popups
+
+        // Check if the activity is running
+        if (isFinishing() || isDestroyed()) {
+            Log.e("VoiceChatPopup", "Activity is not running. Cannot show dialog.");
+            return;
+        }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
         View popupView = getLayoutInflater().inflate(R.layout.dialog_voice_chat, null);
@@ -462,7 +483,7 @@ public class AndroidLauncher extends AndroidApplication {
 
         ImageButton endCallButton = popupView.findViewById(R.id.end_call_button);
         usersContainer = popupView.findViewById(R.id.users_container);
-        HashSet <String> participantsSet = new HashSet<>();
+        HashSet<String> participantsSet = new HashSet<>();
         // Add all current participants
         participantsSet.addAll(voiceParticipants.values());
         if (voiceParticipants != null && !voiceParticipants.isEmpty()) {
@@ -484,8 +505,6 @@ public class AndroidLauncher extends AndroidApplication {
             activeVoiceDialog.dismiss();
             isVoicePopupOpen = false;
         });
-
-
     }
     // Method to add a user circle dynamically
     private void addUserDiv(LinearLayout container, String userName, boolean isSpeaking) {
@@ -535,8 +554,8 @@ public class AndroidLauncher extends AndroidApplication {
             String code = codeInput.getText().toString().trim();
             MainActivity.hashMap.put("voiceChannelCode",code);
             if (!code.isEmpty()) {
-                SocketManager.getInstance().joinVoiceChannel(code, MainActivity.hashMap.get("nickname"),MainActivity.hashMap.get("mapId"));
                 voiceManager = new VoiceManager(SocketManager.getSocket(),nickname,code,this);
+                SocketManager.getInstance().joinVoiceChannel(code, MainActivity.hashMap.get("nickname"),MainActivity.hashMap.get("mapId"),this);
                 Toast.makeText(this, "Joining voice channel: " + code, Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
             } else {
@@ -579,6 +598,12 @@ public class AndroidLauncher extends AndroidApplication {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        if (activeVoiceDialog != null && activeVoiceDialog.isShowing()) {
+            activeVoiceDialog.dismiss();
+        }
         SocketManager.getInstance().disconnectSocket();
     }
+
+
 }
